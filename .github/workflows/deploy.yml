@@ -145,7 +145,7 @@ jobs:
           cdk bootstrap aws://$CDK_DEFAULT_ACCOUNT/$CDK_DEFAULT_REGION || true
           
           # Deploy the stack
-          cdk deploy --app --require-approval never
+          cdk deploy StockAnalysisStack --require-approval never
 
   cleanup:
     name: Cleanup Old Images
