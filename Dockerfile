@@ -35,4 +35,4 @@ HEALTHCHECK --interval=60s --timeout=10s --start-period=60s --retries=3 \
 EXPOSE 8501
 
 # Command to run the application
-CMD ["uv", "run", "streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+CMD ["./run.sh"]
