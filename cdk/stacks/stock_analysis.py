@@ -141,17 +141,14 @@ class StockAnalysisStack(Stack):
         # Add HTTPS listener if domain name and certificate are provided
         if domain_name and hosted_zone_id:
             # Import certificate
-            # certificate = acm.Certificate.from_certificate_arn(
-            #     self, "Certificate",
-            #     certificate_arn=certificate_arn
-            # )
+            certificate = acm.Certificate.from_certificate_arn(self, "Certificate", certificate_arn=certificate_arn)
 
             # HTTPS Listener
             https_listener = lb.add_listener(
                 "HttpsListener",
                 port=80,
-                # certificates=[certificate],
-                # ssl_policy=elbv2.SslPolicy.RECOMMENDED,
+                certificates=[certificate],
+                ssl_policy=elbv2.SslPolicy.RECOMMENDED,
                 default_target_groups=[target_group],  # Use our target group with explicit protocol
             )
 
@@ -159,8 +156,8 @@ class StockAnalysisStack(Stack):
             lb.add_redirect(
                 source_port=80,
                 source_protocol=elbv2.ApplicationProtocol.HTTP,
-                # target_port=443,
-                # target_protocol=elbv2.ApplicationProtocol.HTTPS,
+                target_port=443,
+                target_protocol=elbv2.ApplicationProtocol.HTTPS,
             )
 
             # DNS Record
