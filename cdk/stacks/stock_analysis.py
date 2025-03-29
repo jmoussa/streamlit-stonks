@@ -146,7 +146,7 @@ class StockAnalysisStack(Stack):
             # HTTPS Listener
             https_listener = lb.add_listener(
                 "HttpsListener",
-                port=80,
+                port=443,
                 certificates=[certificate],
                 ssl_policy=elbv2.SslPolicy.RECOMMENDED,
                 default_target_groups=[target_group],  # Use our target group with explicit protocol
