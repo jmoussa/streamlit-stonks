@@ -2,7 +2,7 @@
 import os
 from aws_cdk import App, Environment
 
-from stacks.stock_analysis_stack import StockAnalysisStack
+from stacks.stock_analysis import StockAnalysisStack
 
 app = App()
 
