@@ -93,6 +93,20 @@ class StockAnalysisStack(Stack):
             ),
         )
 
+        # Fargate service security group
+        service_sg = ec2.SecurityGroup(
+            self,
+            "ServiceSecurityGroup",
+            vpc=vpc,
+            description="Security group for Stock Analysis Fargate service",
+            allow_all_outbound=True,
+        )
+
+        # Allow inbound from the load balancer
+        service_sg.add_ingress_rule(
+            peer=ec2.Peer.any_ipv4(), connection=ec2.Port.tcp(8501), description="Allow inbound access to Streamlit"
+        )
+
         # Fargate service
         service = ecs.FargateService(
             self,
@@ -101,37 +115,52 @@ class StockAnalysisStack(Stack):
             task_definition=task_definition,
             desired_count=1,
             assign_public_ip=False,
-            security_groups=[
-                ec2.SecurityGroup.from_security_group_id(
-                    self, "StockAnalysisServiceSG", security_group_id=vpc.vpc_default_security_group
-                )
-            ],
+            security_groups=[service_sg],
             vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS),
         )
 
         # Application Load Balancer
         lb = elbv2.ApplicationLoadBalancer(self, "StockAnalysisLB", vpc=vpc, internet_facing=True)
 
+        # Create target group with explicit protocol
+        target_group = elbv2.ApplicationTargetGroup(
+            self,
+            "StockAnalysisTargetGroup",
+            port=8501,
+            protocol=elbv2.ApplicationProtocol.HTTP,  # Explicitly define HTTP protocol
+            vpc=vpc,
+            target_type=elbv2.TargetType.IP,
+            health_check=elbv2.HealthCheck(
+                path="/", port="8501", interval=Duration.seconds(60), timeout=Duration.seconds(30)
+            ),
+        )
+
+        # Add targets to the target group
+        target_group.add_target(service)
+
         # Add HTTPS listener if domain name and certificate are provided
         if domain_name and hosted_zone_id:
             # Import certificate
-            # certificate = acm.Certificate.from_certificate_arn(self, "Certificate", certificate_arn=certificate_arn)
+            # certificate = acm.Certificate.from_certificate_arn(
+            #     self, "Certificate",
+            #     certificate_arn=certificate_arn
+            # )
 
             # HTTPS Listener
-            https_listener = lb.add_listener("HttpsListener", port=80, ssl_policy=elbv2.SslPolicy.RECOMMENDED)
-
-            # Target group for the service
-            target_group = https_listener.add_targets(
-                "StockAnalysisTargetGroup",
-                port=8501,
-                targets=[service],
-                health_check=elbv2.HealthCheck(path="/", interval=Duration.seconds(60), timeout=Duration.seconds(30)),
+            https_listener = lb.add_listener(
+                "HttpsListener",
+                port=80,
+                # certificates=[certificate],
+                # ssl_policy=elbv2.SslPolicy.RECOMMENDED,
+                default_target_groups=[target_group],  # Use our target group with explicit protocol
             )
 
             # Redirect HTTP to HTTPS
             lb.add_redirect(
                 source_port=80,
                 source_protocol=elbv2.ApplicationProtocol.HTTP,
+                # target_port=443,
+                # target_protocol=elbv2.ApplicationProtocol.HTTPS,
             )
 
             # DNS Record
@@ -157,14 +186,10 @@ class StockAnalysisStack(Stack):
 
         else:
             # HTTP Listener only
-            http_listener = lb.add_listener("HttpListener", port=80)
-
-            # Target group for the service
-            target_group = http_listener.add_targets(
-                "StockAnalysisTargetGroup",
-                port=8501,
-                targets=[service],
-                health_check=elbv2.HealthCheck(path="/", interval=Duration.seconds(60), timeout=Duration.seconds(30)),
+            http_listener = lb.add_listener(
+                "HttpListener",
+                port=80,
+                default_target_groups=[target_group],  # Use our target group with explicit protocol
             )
 
             # Output the HTTP endpoint
