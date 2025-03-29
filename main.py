@@ -175,7 +175,7 @@ def main(my_stocks=["GOOG", "ABBV", "LMT", "EUAD", "PLTR"]):
         combined_data = pd.concat([sp500_data, nasdaq100_data], ignore_index=True)
         # dedupe
         combined_data = combined_data.drop_duplicates(subset=["Ticker"], keep="first")
-        combined_data = combined_data[combined_data["Ticker"].isin(my_stocks) == False]
+        combined_data = combined_data[~combined_data["Ticker"].isin(my_stocks)]
         combined_data = pd.concat([combined_data, my_stock_data], ignore_index=True)
 
         # Sort by ticker
@@ -216,7 +216,7 @@ Buy/Sell Strategy:
 --------------------------------------------------------------------------------------------------
     """
     print(docstr)
-    my_stocks = ["SPX", "SPY", "VIX", "ABBV", "LMT", "EUAD", "PLTR", "CVNA", "KMX"]
+    my_stocks = ["SPY", "VIX", "ABBV", "LMT", "PLTR", "CVNA", "KMX"]
     print(f"Fetching data for your stocks: {my_stocks}")
     print("---------------------------------------------------------------------------------------------------")
     df, actionable_df = main(my_stocks)

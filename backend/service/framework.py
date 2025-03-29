@@ -11,9 +11,10 @@ import os
 import io
 import requests
 import json
+import traceback
 import logging
 from abc import ABC, abstractmethod
-from framework.macd import fetch_charts
+from macd import fetch_charts
 
 
 # Set up logging
@@ -637,13 +638,13 @@ class DiscordDistributor(ReportDistributor):
             # Prepare webhook data
             webhook_data = {
                 "content": content,
-                "embeds": [
-                    {
-                        "title": f"{report_data['title']} - {report_data['timestamp']}",
-                        "color": 3447003,  # Blue color
-                        "fields": [],
-                    }
-                ],
+                # "embeds": [
+                #     {
+                #         "title": f"{report_data['title']} - {report_data['timestamp']}",
+                #         "color": 3447003,  # Blue color
+                #         "fields": [],
+                #     }
+                # ],
             }
 
             # Add username and avatar if provided
@@ -700,47 +701,56 @@ class DiscordDistributor(ReportDistributor):
 
         except Exception as e:
             logger.error(f"Failed to send to Discord: {str(e)}")
+            print(traceback.format_exc())
             return False
 
     def format_report(self, report_data):
         """
         Format the report for Discord
         """
-        content = f"# {report_data['title']}\n"
+        # content = f"# {report_data['title']}\n"
         # Discord uses Markdown formatting
-        content += f"Generated on {report_data['timestamp']}\n\n"
+        content = f"Generated on {report_data['timestamp']}\n\n"
         content += "## Market Summary\n"
-        content += "This just in, we're cookin' with gas! 🚀\n"
+        content += "\nCheck out the dynamic [online-stock-tracer](https://stock-tracker.joseph-moussa.com) for additional charts and details! 📈 \n"
 
-        weekly_emoji = "📈" if report_data["summary_stats"]["avg_weekly_change"] > 0 else "📉"
-        monthly_emoji = "📈" if report_data["summary_stats"]["avg_monthly_change"] > 0 else "📉"
-        content += f"{weekly_emoji} Average Weekly Change: {report_data['summary_stats']['avg_weekly_change']:.2f}%\n"
-        content += (
-            f"{monthly_emoji} Average Monthly Change: {report_data['summary_stats']['avg_monthly_change']:.2f}%\n"
-        )
+        # weekly_emoji = "📈" if report_data["summary_stats"]["avg_weekly_change"] > 0 else "📉"
+        # monthly_emoji = "📈" if report_data["summary_stats"]["avg_monthly_change"] > 0 else "📉"
+        # content += f"{weekly_emoji} Average Weekly Change: {report_data['summary_stats']['avg_weekly_change']:.2f}%\n"
+        # content += (
+        #     f"{monthly_emoji} Average Monthly Change: {report_data['summary_stats']['avg_monthly_change']:.2f}%\n"
+        # )
+
+        link_url_template = "https://stock-tracker.joseph-moussa.com?ticker={}"
+        for key, df in report_data["recommendations"].items():
+            df = pd.DataFrame(df)
+            if "Ticker" in df.columns:
+                df["report_link"] = df["Ticker"].apply(lambda x: link_url_template.format(x))
+            else:
+                df["report_link"] = df["ticker"].apply(lambda x: link_url_template.format(x))
+            report_data["recommendations"][key] = df.to_dict(orient="records")
 
         # My Stocks
         content += "\n"
-        content += "## My Stocks\n"
-        my_stocks = report_data["recommendations"]["my_stocks"].sort_values(by="Ticker", ascending=False)
-
+        content += "## Pick-em Personal Stocks\n"
+        my_stocks = pd.DataFrame(report_data["recommendations"]["my_stocks"]).sort_values(by="Ticker", ascending=False)
         for _, row in my_stocks.iterrows():
             if row["Index"] == "My Stocks":
                 emoji = "📈" if row["Weekly_Percentage_Change"] > 0 else "📉"
-                content += f"{emoji} - **{row['Ticker']}**: $ {row['Current_Price']}  |  Weekly: {row['Weekly_Percentage_Change']}%  |  Monthly: {row['Monthly_Percentage_Change']}%\n"
-
+                content += f"{emoji} - **[{row['Ticker']}]({row['report_link']})**: $ {row['Current_Price']}  |  Weekly: {row['Weekly_Percentage_Change']}%\n"
         content += "\n"
         # Add buy recommendations
         content += "## Top Buy Recommendations\n"
-        for rec in report_data["recommendations"]["buy"][:5]:
-            content += f"- **{rec['ticker']}**: $ {rec['current_price']}  |  Weekly: {rec['weekly_change']}%  |  Monthly: {rec['monthly_change']}% |  Reason: {rec['reason']}\n"
+        for rec in report_data["recommendations"]["buy"][:3]:
+            content += f"- **[{rec['ticker']}]({rec['report_link']})**: $ {rec['current_price']}  |  Weekly: {rec['weekly_change']}%  |  Monthly: {rec['monthly_change']}% |  Reason: {rec['reason']}\n"
 
         content += "\n"
         # Add sell recommendations
         content += "## Top Sell Recommendations\n"
-        for rec in report_data["recommendations"]["sell"][:5]:
-            content += f"- **{rec['ticker']}**: $ {rec['current_price']} |  Weekly: {rec['weekly_change']}%  |  Monthly: {rec['monthly_change']}% |  Reason: {rec['reason']}\n"
+        for rec in report_data["recommendations"]["sell"][:3]:
+            content += f"- **[{rec['ticker']}]({rec['report_link']})**: $ {rec['current_price']} |  Weekly: {rec['weekly_change']}%  |  Monthly: {rec['monthly_change']}% |  Reason: {rec['reason']}\n"
         content += "\n"
+        content += "Past performance is not indicative of future results."
 
         return content
 
@@ -760,8 +770,8 @@ if __name__ == "__main__":
     # Generate stock report
     report_generator = StockReportGenerator(df)
     report_data_dict = report_generator.generate_report()
-    filename = "full_stock_report.html"
-    report_html = report_generator.save_report_to_html(filename)
+    # filename = "full_stock_report.html"
+    # report_html = report_generator.save_report_to_html(filename)
 
     money_moves = "https://discord.com/api/webhooks/1354536674096320653/wxIbvAbYB6DSDemrR8LjXBFxLDGuX7q7QGGH0fZ7yq4HB5uTg3lUe0TfTbdY6Xb-D3Tr"
     test_channel = "https://discord.com/api/webhooks/1354544888590630952/PwJar1bIfYS6rRcYmQlWeMu2YBFY-Z4xszFqiDFLFrNc_qOdNwgt0E2UpQlon0NJFqSD"
@@ -773,4 +783,4 @@ if __name__ == "__main__":
         }
     )
     # Send report to Discord with file
-    discord_distributor.send_report(report_data_dict, report_file=filename)
+    discord_distributor.send_report(report_data_dict)
