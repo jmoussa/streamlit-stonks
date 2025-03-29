@@ -141,7 +141,20 @@ class StockAnalysisStack(Stack):
         # Add HTTPS listener if domain name and certificate are provided
         if domain_name and hosted_zone_id:
             # Import certificate
-            certificate = acm.Certificate.from_certificate_arn(self, "Certificate", certificate_arn=certificate_arn)
+            # certificate = acm.Certificate.from_certificate_arn(self, "Certificate", certificate_arn=certificate_arn)
+
+            # DNS Record
+            hosted_zone = route53.HostedZone.from_hosted_zone_attributes(
+                self, "HostedZone", hosted_zone_id=hosted_zone_id, zone_name=domain_name
+            )
+
+            # Create an ACM certificate
+            certificate = acm.Certificate(
+                self,
+                "StockAnalysisCertificate",
+                domain_name=domain_name,
+                validation=acm.CertificateValidation.from_dns(hosted_zone),
+            )
 
             # HTTPS Listener
             https_listener = lb.add_listener(
@@ -158,11 +171,6 @@ class StockAnalysisStack(Stack):
                 source_protocol=elbv2.ApplicationProtocol.HTTP,
                 target_port=443,
                 target_protocol=elbv2.ApplicationProtocol.HTTPS,
-            )
-
-            # DNS Record
-            hosted_zone = route53.HostedZone.from_hosted_zone_attributes(
-                self, "HostedZone", hosted_zone_id=hosted_zone_id, zone_name=domain_name
             )
 
             route53.ARecord(
