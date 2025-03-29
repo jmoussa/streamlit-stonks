@@ -27,12 +27,12 @@ ENV STREAMLIT_SERVER_PORT=8501
 ENV STREAMLIT_SERVER_HEADLESS=true
 ENV STREAMLIT_SERVER_ENABLE_CORS=false
 
-# Expose Streamlit port
-EXPOSE 8501
+# Expose ports
+EXPOSE 8501 8080
 
-# Health check
-HEALTHCHECK --interval=60s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:8501/ || exit 1 
+# Set health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:8080/health || exit 1
 
 # Command to run the application
 CMD ["./run.sh"]
