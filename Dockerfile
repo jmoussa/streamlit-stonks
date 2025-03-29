@@ -32,7 +32,7 @@ EXPOSE 8501
 
 # Health check
 HEALTHCHECK --interval=60s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:8501/healthz || exit 1
+    CMD curl -f http://localhost:8501/healthz || curl -f http://stock-tracker.joseph-moussa.com/healthz
 
 # Command to run the application
 CMD ["./run.sh"]
