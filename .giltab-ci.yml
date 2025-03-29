@@ -1,0 +1,125 @@
+stages:
+  - build
+  - test
+  - deploy
+
+variables:
+  AWS_DEFAULT_REGION: us-east-1
+  ECR_REPOSITORY_NAME: stock-analysis-app
+  SERVICE_NAME: stock-analysis
+  DOCKER_TLS_CERTDIR: "/certs"
+
+# Cache pip dependencies between jobs
+cache:
+  paths:
+    - .pip/
+
+# Build the Docker image and push to ECR
+build:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  variables:
+    IMAGE_TAG: $CI_COMMIT_SHORT_SHA
+  before_script:
+    - apk add --no-cache python3 py3-pip
+    - pip3 install --user awscli
+    - export PATH=$PATH:~/.local/bin
+    - aws --version
+    - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+    # Create ECR repository if it doesn't exist
+    - aws ecr describe-repositories --repository-names $ECR_REPOSITORY_NAME || aws ecr create-repository --repository-name $ECR_REPOSITORY_NAME
+  script:
+    - echo "Building Docker image..."
+    - docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$ECR_REPOSITORY_NAME:$IMAGE_TAG .
+    - echo "Pushing image to ECR..."
+    - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$ECR_REPOSITORY_NAME:$IMAGE_TAG
+    - echo "Tagging image as latest..."
+    - docker tag $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$ECR_REPOSITORY_NAME:$IMAGE_TAG $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$ECR_REPOSITORY_NAME:latest
+    - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$ECR_REPOSITORY_NAME:latest
+  only:
+    - main
+    - master
+
+# Run the tests
+test:
+  stage: test
+  image: python:3.10-slim
+  before_script:
+    - pip install -r requirements.txt
+    - pip install pytest
+  script:
+    - echo "Running tests..."
+    # Add your test commands here
+    # - pytest -v
+    - echo "Tests completed"
+  only:
+    - main
+    - master
+
+# Deploy using AWS CDK
+deploy:
+  stage: deploy
+  image: python:3.10-slim
+  variables:
+    IMAGE_TAG: $CI_COMMIT_SHORT_SHA
+    CDK_DEFAULT_ACCOUNT: $AWS_ACCOUNT_ID
+    CDK_DEFAULT_REGION: $AWS_DEFAULT_REGION
+    CONTAINER_IMAGE: $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$ECR_REPOSITORY_NAME:$IMAGE_TAG
+  before_script:
+    - apt-get update && apt-get install -y nodejs npm
+    - npm install -g aws-cdk
+    - pip install -r requirements-cdk.txt
+    - pip install -e .
+    - pip install awscli
+    # Configure AWS credentials
+    - mkdir -p ~/.aws
+    - echo "[default]" > ~/.aws/config
+    - echo "region = $AWS_DEFAULT_REGION" >> ~/.aws/config
+    - echo "[default]" > ~/.aws/credentials
+    - echo "aws_access_key_id = $AWS_ACCESS_KEY_ID" >> ~/.aws/credentials
+    - echo "aws_secret_access_key = $AWS_SECRET_ACCESS_KEY" >> ~/.aws/credentials
+    - aws sts get-caller-identity
+  script:
+    - echo "Deploying to AWS Fargate..."
+    # Bootstrap CDK (only needed once per account/region)
+    - cdk bootstrap aws://$AWS_ACCOUNT_ID/$AWS_DEFAULT_REGION || true
+    # Deploy the CDK stack
+    - cdk deploy --require-approval never
+  only:
+    - main
+    - master
+  environment:
+    name: production
+    url: https://$DOMAIN_NAME  # or http://[load-balancer-dns] if not using a custom domain
+
+# Optional - Cleanup unused ECR images
+cleanup:
+  stage: deploy
+  image: python:3.10-slim
+  before_script:
+    - pip install awscli
+    - aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+    - aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+    - aws configure set region $AWS_DEFAULT_REGION
+  script:
+    - echo "Cleaning up old ECR images..."
+    # Keep the 5 most recent images and delete the rest
+    - |
+      IMAGES_TO_DELETE=$(aws ecr list-images --repository-name $ECR_REPOSITORY_NAME --query 'imageIds[?type(imageTag)!=`string`].[imageDigest]' --output text)
+      if [ ! -z "$IMAGES_TO_DELETE" ]; then
+        echo "Deleting untagged images..."
+        aws ecr batch-delete-image --repository-name $ECR_REPOSITORY_NAME --image-ids $(echo $IMAGES_TO_DELETE | sed 's/\s\+/imageDigest=/g; s/^/imageDigest=/') || true
+      fi
+      
+      IMAGES_TO_KEEP=$(aws ecr describe-images --repository-name $ECR_REPOSITORY_NAME --query 'sort_by(imageDetails,& imagePushedAt)[-5:].imageDigest' --output text)
+      IMAGES_TO_DELETE=$(aws ecr describe-images --repository-name $ECR_REPOSITORY_NAME --query 'sort_by(imageDetails,& imagePushedAt)[:-5].imageDigest' --output text)
+      
+      if [ ! -z "$IMAGES_TO_DELETE" ]; then
+        echo "Deleting old images while keeping the 5 most recent..."
+        aws ecr batch-delete-image --repository-name $ECR_REPOSITORY_NAME --image-ids $(echo $IMAGES_TO_DELETE | sed 's/\s\+/imageDigest=/g; s/^/imageDigest=/') || true
+      fi
+  only:
+    - schedules
+  when: manual
