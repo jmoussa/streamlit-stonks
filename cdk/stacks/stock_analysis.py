@@ -162,7 +162,7 @@ class StockAnalysisStack(Stack):
                 ssl_policy=elbv2.SslPolicy.RECOMMENDED,
                 default_target_groups=[target_group],
                 # Apply a removal policy to help with updates
-                removal_policy=RemovalPolicy.DESTROY,
+                # removal_policy=RemovalPolicy.DESTROY,
             )
 
             # HTTP to HTTPS redirect
@@ -176,7 +176,7 @@ class StockAnalysisStack(Stack):
                     port="443", protocol=elbv2.ApplicationProtocol.HTTPS, permanent=True
                 ),
                 # Apply a removal policy to help with updates
-                removal_policy=RemovalPolicy.DESTROY,
+                # removal_policy=RemovalPolicy.DESTROY,
             )
 
             # DNS Record
@@ -210,7 +210,7 @@ class StockAnalysisStack(Stack):
                 protocol=elbv2.ApplicationProtocol.HTTP,
                 default_target_groups=[target_group],
                 # Apply a removal policy to help with updates
-                removal_policy=RemovalPolicy.DESTROY,
+                # removal_policy=RemovalPolicy.DESTROY,
             )
 
             # Output the HTTP endpoint
