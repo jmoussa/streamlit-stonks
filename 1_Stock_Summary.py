@@ -14,8 +14,31 @@ st.markdown("Analyze stock price movements with custom MACD indicators")
 st.sidebar.header("Settings")
 
 # Ticker selection
-default_tickers = ["AAPL", "MSFT", "GOOGL", "AMZN", "META", "TSLA", "NVDA", "JPM", "V", "JNJ", "WMT", "PG"]
+default_tickers = [
+    "Select a stock",
+    "AAPL",
+    "MSFT",
+    "GOOGL",
+    "AMZN",
+    "META",
+    "TSLA",
+    "NVDA",
+    "JPM",
+    "V",
+    "JNJ",
+    "WMT",
+    "PG",
+    "LMT",
+    "SPY",
+    "QQQ",
+]
+# override_ticker_check = st.sidebar.checkbox("Select Ticker", value=False)
 selected_ticker = st.sidebar.selectbox("Select Stock", default_tickers, index=0)
+if selected_ticker == "Select a stock":
+    if st.query_params.get("ticker") is not None:
+        selected_ticker = st.query_params["ticker"]
+    else:
+        selected_ticker = "SPY"
 
 # Time period selection
 time_periods = {
@@ -25,20 +48,17 @@ time_periods = {
     "1 Year": "1y",
     "2 Years": "2y",
     "5 Years": "5y",
+    "10 Years": "10y",
 }
-selected_period = st.sidebar.selectbox("Select Time Period", list(time_periods.keys()))
+selected_period = st.sidebar.selectbox("Select Time Period", list(time_periods.keys()), index=3)
 period = time_periods[selected_period]
 
 # MACD parameters
-st.sidebar.header("MACD Parameters")
-
 col1, col2 = st.sidebar.columns(2)
-with col1:
-    fast_ma = st.number_input("Fast MA Period", min_value=5, max_value=50, value=10)
-    slow_ma = st.number_input("Slow MA Period", min_value=10, max_value=100, value=30)
-with col2:
-    longest_ma = st.number_input("Longest MA Period", min_value=20, max_value=200, value=60)
-    signal_period = st.number_input("Signal Period", min_value=5, max_value=20, value=9)
+fast_ma = 10
+slow_ma = 30
+longest_ma = 60
+signal_period = 9
 
 
 # Cache function for data fetching
@@ -168,17 +188,21 @@ if df is not None:
         "JNJ": "Johnson & Johnson",
         "WMT": "Walmart Inc.",
         "PG": "Procter & Gamble Company",
+        "LMT": "Lockheed Martin Corporation",
+        "SPY": "SPDR S&P 500 ETF Trust",
+        "SPX": "S&P 500 Index",
+        "QQQ": "Invesco QQQ Trust",
     }
 
     # Display company name
-    st.header(f"{company_info.get(selected_ticker, 'Unknown Company')} ({selected_ticker})")
+    st.header(f"{company_info.get(selected_ticker, '')} ({selected_ticker})")
 
     # Calculate MACD values
     df_custom_macd = calculate_custom_macd(df, fast_ma, slow_ma, longest_ma, signal_period)
     df_macd = calculate_macd(df)
 
     # Stats row
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5 = st.columns(5)
 
     current_price = df["Close"].iloc[-1]
 
@@ -191,6 +215,11 @@ if df is not None:
     month_ago_idx = -21 if len(df) >= 21 else 0
     month_ago_price = df["Close"].iloc[month_ago_idx]
     monthly_change = ((current_price - month_ago_price) / month_ago_price) * 100
+
+    # Daily change
+    day_ago_idx = -2 if len(df) >= 2 else 0
+    day_ago_price = df["Close"].iloc[day_ago_idx]
+    daily_change = ((current_price - day_ago_price) / day_ago_price) * 100
 
     # MACD signal
     last_custom_macd = df_custom_macd["macd_10_30"].iloc[-1]
@@ -212,14 +241,18 @@ if df is not None:
         st.metric("Current Price", f"${current_price:.2f}")
 
     with col2:
+        daily_delta = f"{daily_change:.2f}%"
+        st.metric("Daily Change", daily_delta, delta=daily_delta)
+
+    with col3:
         weekly_delta = f"{weekly_change:.2f}%"
         st.metric("Weekly Change", weekly_delta, delta=weekly_delta)
 
-    with col3:
+    with col4:
         monthly_delta = f"{monthly_change:.2f}%"
         st.metric("Monthly Change", monthly_delta, delta=monthly_delta)
 
-    with col4:
+    with col5:
         st.markdown(f"**MACD Signal**")
         st.markdown(f"<h3 style='color:{signal_color}'>{macd_signal}</h3>", unsafe_allow_html=True)
 
