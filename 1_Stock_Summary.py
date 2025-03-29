@@ -2,6 +2,27 @@ import streamlit as st
 import yfinance as yf
 import altair as alt
 from backend.service.macd import calculate_macd, calculate_custom_macd, create_macd_chart, create_moving_averages_chart
+from flask import Flask, jsonify
+import threading
+
+# Create a Flask app for health checks
+flask_app = Flask(__name__)
+
+
+@flask_app.route("/health")
+def health_check():
+    return jsonify(status="healthy"), 200
+
+
+# Start Flask server in a separate thread
+def run_flask():
+    flask_app.run(host="0.0.0.0", port=8080)
+
+
+# Start Flask server
+thread = threading.Thread(target=run_flask)
+thread.daemon = True
+thread.start()
 
 # Set page config
 st.set_page_config(page_title="Stock Analysis Dashboard", page_icon="📈", layout="wide")

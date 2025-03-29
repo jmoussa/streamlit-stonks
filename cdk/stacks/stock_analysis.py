@@ -9,6 +9,7 @@ from aws_cdk import (
     aws_route53 as route53,
     aws_route53_targets as route53_targets,
     aws_certificatemanager as acm,
+    core as cdk,
     Duration,
     RemovalPolicy,
     CfnOutput,
@@ -86,11 +87,7 @@ class StockAnalysisStack(Stack):
                 "STREAMLIT_SERVER_ENABLE_CORS": "true",
             },
             health_check=ecs.HealthCheck(
-                command=["CMD-SHELL", "curl -f http://localhost/ || exit 1"],
-                # command=[
-                #     "CMD-SHELL",
-                #     "curl -f http://localhost:8501/healthz || exit 1",  # Streamlit health check
-                # ],
+                command=["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"],
                 interval=Duration.seconds(60),
                 timeout=Duration.seconds(10),
                 retries=3,
@@ -134,13 +131,23 @@ class StockAnalysisStack(Stack):
             protocol=elbv2.ApplicationProtocol.HTTP,  # Explicitly define HTTP protocol
             vpc=vpc,
             target_type=elbv2.TargetType.IP,
-            health_check=elbv2.HealthCheck(
-                path="/healthz", port="8501", interval=Duration.seconds(60), timeout=Duration.seconds(30)
-            ),
+            # health_check=elbv2.HealthCheck(
+            #     path="/health", port="8080", interval=Duration.seconds(60), timeout=Duration.seconds(30)
+            # ),
         )
 
         # Add targets to the target group
         target_group.add_target(service)
+
+        service.target_group.configure_health_check(
+            path="/health",
+            port="8080",
+            healthy_http_codes="200",
+            interval=cdk.Duration.seconds(60),
+            timeout=cdk.Duration.seconds(30),
+            healthy_threshold_count=2,
+            unhealthy_threshold_count=3,
+        )
 
         # Add HTTPS listener if domain name and certificate are provided
         if domain_name and hosted_zone_id:
