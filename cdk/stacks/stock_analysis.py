@@ -12,7 +12,6 @@ from aws_cdk import (
     Duration,
     RemovalPolicy,
     CfnOutput,
-    RemovalPolicy,
 )
 from constructs import Construct
 
@@ -121,13 +120,7 @@ class StockAnalysisStack(Stack):
         )
 
         # Application Load Balancer
-        lb = elbv2.ApplicationLoadBalancer(
-            self,
-            "StockAnalysisLB",
-            vpc=vpc,
-            internet_facing=True,
-            load_balancer_name="StockAnalysisLB",  # Fixed name to make it easier to detect changes
-        )
+        lb = elbv2.ApplicationLoadBalancer(self, "StockAnalysisLB", vpc=vpc, internet_facing=True)
 
         # Create target group with explicit protocol
         target_group = elbv2.ApplicationTargetGroup(
@@ -140,43 +133,31 @@ class StockAnalysisStack(Stack):
             health_check=elbv2.HealthCheck(
                 path="/", port="8501", interval=Duration.seconds(60), timeout=Duration.seconds(30)
             ),
-            target_group_name="StockAnalysisTargets",  # Fixed name to make it easier to detect changes
         )
 
         # Add targets to the target group
         target_group.add_target(service)
 
         # Add HTTPS listener if domain name and certificate are provided
-        if domain_name and certificate_arn and hosted_zone_id:
+        if domain_name and hosted_zone_id:
             # Import certificate
             certificate = acm.Certificate.from_certificate_arn(self, "Certificate", certificate_arn=certificate_arn)
 
-            # Remove and recreate the listener each time to avoid conflicts
-            https_listener = elbv2.ApplicationListener(
-                self,
+            # HTTPS Listener
+            https_listener = lb.add_listener(
                 "HttpsListener",
-                load_balancer=lb,
-                port=443,
-                protocol=elbv2.ApplicationProtocol.HTTPS,
+                port=80,
                 certificates=[certificate],
                 ssl_policy=elbv2.SslPolicy.RECOMMENDED,
-                default_target_groups=[target_group],
-                # Apply a removal policy to help with updates
-                # removal_policy=RemovalPolicy.DESTROY,
+                default_target_groups=[target_group],  # Use our target group with explicit protocol
             )
 
-            # HTTP to HTTPS redirect
-            http_listener = elbv2.ApplicationListener(
-                self,
-                "HttpListener",
-                load_balancer=lb,
-                port=80,
-                protocol=elbv2.ApplicationProtocol.HTTP,
-                default_action=elbv2.ListenerAction.redirect(
-                    port="443", protocol=elbv2.ApplicationProtocol.HTTPS, permanent=True
-                ),
-                # Apply a removal policy to help with updates
-                # removal_policy=RemovalPolicy.DESTROY,
+            # Redirect HTTP to HTTPS
+            lb.add_redirect(
+                source_port=80,
+                source_protocol=elbv2.ApplicationProtocol.HTTP,
+                target_port=443,
+                target_protocol=elbv2.ApplicationProtocol.HTTPS,
             )
 
             # DNS Record
@@ -202,15 +183,10 @@ class StockAnalysisStack(Stack):
 
         else:
             # HTTP Listener only
-            http_listener = elbv2.ApplicationListener(
-                self,
+            http_listener = lb.add_listener(
                 "HttpListener",
-                load_balancer=lb,
                 port=80,
-                protocol=elbv2.ApplicationProtocol.HTTP,
-                default_target_groups=[target_group],
-                # Apply a removal policy to help with updates
-                # removal_policy=RemovalPolicy.DESTROY,
+                default_target_groups=[target_group],  # Use our target group with explicit protocol
             )
 
             # Output the HTTP endpoint
