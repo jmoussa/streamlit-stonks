@@ -86,7 +86,7 @@ class StockAnalysisStack(Stack):
                 "STREAMLIT_SERVER_ENABLE_CORS": "true",
             },
             health_check=ecs.HealthCheck(
-                command=["CMD-SHELL", "curl -f http://localhost:8501/ || exit 1"],
+                command=["CMD-SHELL", "curl -f http://localhost:8501/healthz || exit 1"],
                 interval=Duration.seconds(60),
                 timeout=Duration.seconds(10),
                 retries=3,
@@ -131,7 +131,7 @@ class StockAnalysisStack(Stack):
             vpc=vpc,
             target_type=elbv2.TargetType.IP,
             health_check=elbv2.HealthCheck(
-                path="/", port="8501", interval=Duration.seconds(60), timeout=Duration.seconds(30)
+                path="/healthz", port="8501", interval=Duration.seconds(60), timeout=Duration.seconds(30)
             ),
         )
 

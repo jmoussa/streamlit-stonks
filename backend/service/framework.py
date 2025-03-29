@@ -712,7 +712,7 @@ class DiscordDistributor(ReportDistributor):
         # Discord uses Markdown formatting
         content = f"Generated on {report_data['timestamp']}\n\n"
         content += "## Market Summary\n"
-        content += "\nCheck out the dynamic [online-stock-tracer](https://stock-tracker.joseph-moussa.com) for additional charts and details! 📈 \n"
+        content += "\nCheck out the dynamic [online-stock-tracker](https://stock-tracker.joseph-moussa.com) for additional charts and details! 📈 \n"
 
         # weekly_emoji = "📈" if report_data["summary_stats"]["avg_weekly_change"] > 0 else "📉"
         # monthly_emoji = "📈" if report_data["summary_stats"]["avg_monthly_change"] > 0 else "📉"
@@ -720,7 +720,6 @@ class DiscordDistributor(ReportDistributor):
         # content += (
         #     f"{monthly_emoji} Average Monthly Change: {report_data['summary_stats']['avg_monthly_change']:.2f}%\n"
         # )
-
         link_url_template = "https://stock-tracker.joseph-moussa.com?ticker={}"
         for key, df in report_data["recommendations"].items():
             df = pd.DataFrame(df)
@@ -777,7 +776,7 @@ if __name__ == "__main__":
     test_channel = "https://discord.com/api/webhooks/1354544888590630952/PwJar1bIfYS6rRcYmQlWeMu2YBFY-Z4xszFqiDFLFrNc_qOdNwgt0E2UpQlon0NJFqSD"
     discord_distributor = DiscordDistributor(
         {
-            "webhook_url": test_channel,
+            "webhook_url": money_moves,
             "username": "StonkBot",
             "avatar_url": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQOoSZbnUKiiXkx-C6kHAAZ-aSbYeu-5dnd4g&s",
         }
