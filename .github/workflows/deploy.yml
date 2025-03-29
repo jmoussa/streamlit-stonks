@@ -13,6 +13,8 @@ env:
   ECR_REPOSITORY: stock-analysis-app
   ECS_SERVICE: stock-analysis
   ECS_CLUSTER: stock-analysis-cluster
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+  # ECR_REGISTRY: 462366532346.dkr.ecr..amazonaws.com
 
 jobs:
   build:
@@ -47,7 +49,7 @@ jobs:
       - name: Build, tag, and push image to Amazon ECR
         id: build-image
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REGISTRY: ${{ env.ECR_REGISTRY}}
           IMAGE_TAG: ${{ github.sha }}
         run: |
           # Build and push Docker image
@@ -131,7 +133,7 @@ jobs:
         env:
           CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
           CDK_DEFAULT_REGION: ${{ env.AWS_REGION }}
-          CONTAINER_IMAGE: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest # ${{ needs.build.outputs.image-tag }}
+          CONTAINER_IMAGE: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest # ${{ needs.build.outputs.image-tag }}
           DOMAIN_NAME: ${{ secrets.DOMAIN_NAME }}
           CERTIFICATE_ARN: ${{ secrets.CERTIFICATE_ARN }}
           HOSTED_ZONE_ID: ${{ secrets.HOSTED_ZONE_ID }}
