@@ -1,33 +1,29 @@
-name: Build and Deploy Stock Analysis App
+name: Deploy Streamlit Service
 
 on:
   push:
-    branches: [ main, master ]
+    branches:
+      - main
   pull_request:
-    branches: [ main, master ]
-  workflow_dispatch:
-    # Manual trigger
+    branches:
+      - main
 
 env:
   AWS_REGION: us-east-1
-  ECR_REPOSITORY: stock-analysis-app
-  ECS_SERVICE: stock-analysis
-  ECS_CLUSTER: stock-analysis-cluster
-  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+  ECR_REPOSITORY: streamlit-service
+  ECS_SERVICE: StreamlitServiceStack/StreamlitService/Service
+  ECS_CLUSTER: StreamlitServiceStack/StreamlitCluster
 
 jobs:
-  build:
-    name: Build and Push Docker Image
+  build-and-deploy:
     runs-on: ubuntu-latest
-    outputs:
-      image-tag: ${{ steps.build-image.outputs.image-tag }}
-    
+    permissions:
+      contents: read
+      packages: write
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -38,146 +34,40 @@ jobs:
 
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Create ECR repository if it doesn't exist
-        run: |
-          aws ecr describe-repositories --repository-names ${{ env.ECR_REPOSITORY }} || \
-          aws ecr create-repository --repository-name ${{ env.ECR_REPOSITORY }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
-      - name: Build, tag, and push image to Amazon ECR
+      - name: Build, tag, and push Docker image to Amazon ECR
         id: build-image
-        env:
-          ECR_REGISTRY: ${{ env.ECR_REGISTRY}}
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          # Build and push Docker image
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          
-          # Also tag as latest
-          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          
-          # Set output for use in later jobs
-          echo "image-tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-  # test:
-  #   name: Test Application
-  #   runs-on: ubuntu-latest
-  #   needs: build
-    
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v3
-
-  #     - name: Set up Python
-  #       uses: actions/setup-python@v4
-  #       with:
-  #         python-version: '3.10'
-  #         cache: 'pip'
-
-  #     - name: Install dependencies
-  #       run: |
-  #         python -m pip install --upgrade pip
-  #         pip install -r requirements.txt
-  #         pip install pytest
-
-  #     - name: Run tests
-  #       run: |
-  #         echo "Running tests..."
-  #         # Add your test commands here
-  #         # pytest -v
-
-  deploy-cdk:
-    name: Deploy to AWS using CDK
-    runs-on: ubuntu-latest
-    needs: [build]
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up Python
+      - name: Set up Python for CDK
+        if: github.ref == 'refs/heads/main'
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
-          cache: 'pip'
+          python-version: '3.9'
 
-      - name: Set up Node.js (for CDK)
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-
-      - name: Install CDK and dependencies
+      - name: Install CDK dependencies
+        if: github.ref == 'refs/heads/main'
         run: |
-          npm install -g aws-cdk
+          python -m pip install --upgrade pip
           pip install -r requirements-cdk.txt
-          
-          # Check if we're in the correct directory structure
-          if [ -f "setup.py" ]; then
-            pip install -e .
-          elif [ -f "cdk/setup.py" ]; then
-            cd cdk && pip install -e . && cd ..
-          fi
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          npm install -g aws-cdk
 
       - name: Deploy with CDK
-        env:
-          CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
-          CDK_DEFAULT_REGION: ${{ env.AWS_REGION }}
-          CONTAINER_IMAGE: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest # ${{ needs.build.outputs.image-tag }}
-          DOMAIN_NAME: ${{ secrets.DOMAIN_NAME }}
-          CERTIFICATE_ARN: ${{ secrets.CERTIFICATE_ARN }}
-          HOSTED_ZONE_ID: ${{ secrets.HOSTED_ZONE_ID }}
+        if: github.ref == 'refs/heads/main'
         run: |
-          # Navigate to CDK directory if needed
-          if [ -d "cdk" ]; then
-            cd cdk
-          fi
-          
-          # Bootstrap CDK (only needed once per account/region)
-          cdk bootstrap aws://$CDK_DEFAULT_ACCOUNT/$CDK_DEFAULT_REGION || true
-          
-          # Deploy the stack
-          cdk deploy --require-approval never StockAnalysisStack --app="python app.py"
+          cdk deploy StreamlitServiceStack --require-approval never
 
-  cleanup:
-    name: Cleanup Old Images
-    runs-on: ubuntu-latest
-    needs: deploy-cdk
-    if: github.event_name == 'workflow_dispatch'  # Only run manually
-    
-    steps:
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Clean up old ECR images
+      - name: Force update ECS service to use latest image
+        if: github.ref == 'refs/heads/main'
         run: |
-          echo "Cleaning up old ECR images..."
-          
-          # Delete untagged images
-          IMAGES_TO_DELETE=$(aws ecr list-images --repository-name ${{ env.ECR_REPOSITORY }} --filter tagStatus=UNTAGGED --query 'imageIds[*]' --output json)
-          if [ "$IMAGES_TO_DELETE" != "[]" ]; then
-            echo "Deleting untagged images..."
-            aws ecr batch-delete-image --repository-name ${{ env.ECR_REPOSITORY }} --image-ids "$IMAGES_TO_DELETE" || true
-          fi
-          
-          # Keep the 5 most recent images and delete the rest
-          IMAGES_TO_KEEP=$(aws ecr describe-images --repository-name ${{ env.ECR_REPOSITORY }} --query 'sort_by(imageDetails,& imagePushedAt)[-5:].imageDigest' --output json)
-          IMAGES_TO_DELETE=$(aws ecr describe-images --repository-name ${{ env.ECR_REPOSITORY }} --query 'sort_by(imageDetails,& imagePushedAt)[:-5].imageDigest' --output json)
-          
-          if [ "$IMAGES_TO_DELETE" != "[]" ]; then
-            echo "Deleting old images while keeping the 5 most recent..."
-            aws ecr batch-delete-image --repository-name ${{ env.ECR_REPOSITORY }} --image-ids "$IMAGES_TO_DELETE" || true
-          fi
+          aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.ECS_SERVICE }} --force-new-deployment

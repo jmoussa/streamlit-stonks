@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 import os
-from aws_cdk import App, Environment
+from aws_cdk import App, Environment, core as cdk
 
-from stacks.stock_analysis import StockAnalysisStack
+from cdk.stacks.streamlit_service_stack import StockAnalysisStack
+from streamlit_service_stack import StreamlitServiceStack
 
 app = App()
 
@@ -15,16 +16,14 @@ domain_name = os.environ.get("DOMAIN_NAME", "")  # Optional: example.com
 certificate_arn = os.environ.get("CERTIFICATE_ARN", "")  # Optional: arn:aws:acm:{region}:{account}:certificate/{id}
 hosted_zone_id = os.environ.get("HOSTED_ZONE_ID", "")  # Optional: Route53 hosted zone ID
 
-# Create the stack
-StockAnalysisStack(
+app = cdk.App()
+StreamlitServiceStack(
     app,
-    "StockAnalysisStack",
-    env=Environment(account=account, region=region),
-    ecr_repository_name=ecr_repository_name,
-    container_image=container_image,
-    domain_name=domain_name,
-    certificate_arn=certificate_arn,
-    hosted_zone_id=hosted_zone_id,
+    "StreamlitServiceStack",
+    env=cdk.Environment(
+        account=app.node.try_get_context("account") or os.process.env.CDK_DEFAULT_ACCOUNT,
+        region=app.node.try_get_context("region") or os.process.env.CDK_DEFAULT_REGION,
+    ),
 )
 
 app.synth()

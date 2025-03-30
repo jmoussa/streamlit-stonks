@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "altair>=5.5.0",
+    "aws-cdk-lib>=2.186.0",
     "beautifulsoup4>=4.13.3",
     "bs4>=0.0.2",
     "fastapi>=0.115.12",
