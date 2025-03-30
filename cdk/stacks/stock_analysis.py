@@ -9,7 +9,6 @@ from aws_cdk import (
     aws_route53 as route53,
     aws_route53_targets as route53_targets,
     aws_certificatemanager as acm,
-    core as cdk,
     Duration,
     RemovalPolicy,
     CfnOutput,
@@ -143,8 +142,8 @@ class StockAnalysisStack(Stack):
             path="/health",
             port="8080",
             healthy_http_codes="200",
-            interval=cdk.Duration.seconds(60),
-            timeout=cdk.Duration.seconds(30),
+            interval=Duration.seconds(60),
+            timeout=Duration.seconds(30),
             healthy_threshold_count=2,
             unhealthy_threshold_count=3,
         )
