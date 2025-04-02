@@ -24,7 +24,7 @@ hosted_zone_id = os.environ.get("HOSTED_ZONE_ID", "")  # Optional: Route53 hoste
 if args.stack == "ecr-stack":
     ECRRepositoryStack(
         app,
-        "ecr-repository-stack",
+        "ecr-stack",
         ecr_repository_name=ecr_repository_name,
         env=Environment(account=account, region=region),
     )
