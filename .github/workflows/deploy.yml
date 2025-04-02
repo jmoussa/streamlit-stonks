@@ -35,6 +35,19 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
+ 
+      - name: Set up Python for CDK
+        if: github.ref == 'refs/heads/main'
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install CDK dependencies
+        if: github.ref == 'refs/heads/main'
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-cdk.txt
+          npm install -g aws-cdk
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -53,19 +66,6 @@ jobs:
           tags: 462366532346.dkr.ecr.us-east-1.amazonaws.com/streamlit-service:${{ github.sha }} , 462366532346.dkr.ecr.us-east-1.amazonaws.com/streamlit-service:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
-     
-      - name: Set up Python for CDK
-        if: github.ref == 'refs/heads/main'
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-
-      - name: Install CDK dependencies
-        if: github.ref == 'refs/heads/main'
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements-cdk.txt
-          npm install -g aws-cdk
 
       - name: Deploy Streamlit with CDK
         if: github.ref == 'refs/heads/main'
