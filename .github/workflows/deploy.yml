@@ -45,21 +45,12 @@ jobs:
         with:
           context: .
           push: true
-          tags: 462366532346.dkr.ecr.us-east-1.amazonaws.com/stock-analysis-app:${{ github.sha }}
+          tags: 
+            - 462366532346.dkr.ecr.us-east-1.amazonaws.com/stock-analysis-app:${{ github.sha }}
+            - 462366532346.dkr.ecr.us-east-1.amazonaws.com/stock-analysis-app:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      
-      - name: Build, tag, and push Docker image to Amazon ECR
-        id: build-image
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          push: true
-          tags: 462366532346.dkr.ecr.us-east-1.amazonaws.com/stock-analysis-app:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-
+     
       - name: Set up Python for CDK
         if: github.ref == 'refs/heads/main'
         uses: actions/setup-python@v4
