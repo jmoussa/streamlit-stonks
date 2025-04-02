@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-import os
 from aws_cdk import App, Environment
 import aws_cdk as cdk
-
+import os
 from stacks.streamlit_service_stack import StreamlitServiceStack
 
 app = App()
@@ -21,8 +20,8 @@ StreamlitServiceStack(
     app,
     "streamlit-service-stack",
     env=cdk.Environment(
-        account=app.node.try_get_context("account") or os.process.env.CDK_DEFAULT_ACCOUNT,
-        region=app.node.try_get_context("region") or os.process.env.CDK_DEFAULT_REGION,
+        account=app.node.try_get_context("account") or account,
+        region=app.node.try_get_context("region") or region,
     ),
 )
 
