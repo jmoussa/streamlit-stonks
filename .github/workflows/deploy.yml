@@ -10,9 +10,9 @@ on:
 
 env:
   AWS_REGION: us-east-1
-  ECR_REPOSITORY: stock-analysis-app
-  ECS_SERVICE: stock-analysis-app-service 
-  ECS_CLUSTER: stock-analysis-app-cluster
+  ECR_REPOSITORY: streamlit-service 
+  ECS_SERVICE: streamlit-ecs-service 
+  ECS_CLUSTER: streamlit-app-cluster
 
 jobs:
   build-and-deploy:
