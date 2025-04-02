@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
-from aws_cdk import App, Environment, core as cdk
+from aws_cdk import App, Environment
+import aws_cdk as core
 
 from cdk.stacks.streamlit_service_stack import StockAnalysisStack
 from streamlit_service_stack import StreamlitServiceStack

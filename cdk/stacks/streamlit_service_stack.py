@@ -5,8 +5,8 @@ from aws_cdk import (
     aws_ecs_patterns as ecs_patterns,
     aws_elasticloadbalancingv2 as elbv2,
     aws_iam as iam,
-    core as cdk,
 )
+import aws_cdk as core
 
 
 class StreamlitServiceStack(cdk.Stack):
