@@ -65,7 +65,7 @@ jobs:
       - name: Deploy with CDK
         if: github.ref == 'refs/heads/main'
         run: |
-          cdk deploy streamlit-service-stack --require-approval never
+          cdk deploy streamlit-service-stack --require-approval never --app="python app.py"
 
       - name: Force update ECS service to use latest image
         if: github.ref == 'refs/heads/main'
