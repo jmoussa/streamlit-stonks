@@ -3,7 +3,7 @@ import os
 from aws_cdk import App, Environment
 import aws_cdk as cdk
 
-from cdk.stacks.streamlit_service_stack import StreamlitServiceStack
+from stacks.streamlit_service_stack import StreamlitServiceStack
 
 app = App()
 
