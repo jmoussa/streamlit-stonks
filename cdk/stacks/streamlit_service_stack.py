@@ -7,11 +7,10 @@ from aws_cdk import (
     aws_iam as iam,
 )
 import aws_cdk as cdk
-from constructs import Construct
 
 
 class StreamlitServiceStack(cdk.Stack):
-    def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
+    def __init__(self, scope, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
         # Configuration parameters (can be passed from context or environment)
