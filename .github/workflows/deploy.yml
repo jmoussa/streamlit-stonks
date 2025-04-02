@@ -64,8 +64,14 @@ jobs:
 
       - name: Deploy with CDK
         if: github.ref == 'refs/heads/main'
-        run: |
-          cdk deploy streamlit-service-stack --require-approval never --app="python app.py"
+        uses: aws-actions/aws-cdk@v1
+        with:
+          command: 'deploy'
+          stack: 'streamlit-service-stack'
+          app: 'python app.py'
+          arguments: '--require-approval never'
+        # run: |
+        #   cdk deploy streamlit-service-stack --require-approval never --app="python app.py"
 
       - name: Force update ECS service to use latest image
         if: github.ref == 'refs/heads/main'
