@@ -39,6 +39,11 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
+      - name: Deploy ECR with CDK
+        if: github.ref == 'refs/heads/main'
+        run: |
+          cdk deploy ecr-stack --require-approval never --app="python ${PWD}/cdk/app.py --stack=ecr-stack"
+
       - name: Build, tag, and push Docker image to Amazon ECR
         id: build-image
         uses: docker/build-push-action@v4
@@ -62,10 +67,10 @@ jobs:
           pip install -r requirements-cdk.txt
           npm install -g aws-cdk
 
-      - name: Deploy with CDK
+      - name: Deploy Streamlit with CDK
         if: github.ref == 'refs/heads/main'
         run: |
-          cdk deploy streamlit-service-stack --require-approval never --app="python ${PWD}/cdk/app.py"
+          cdk deploy streamlit-service-stack --require-approval never --app="python ${PWD}/cdk/app.py --stack=streamlit-service-stack"
 
       - name: Force update ECS service to use latest image
         if: github.ref == 'refs/heads/main'
