@@ -3,7 +3,7 @@ from aws_cdk import aws_ecr as ecr
 
 
 class ECRRepositoryStack(cdk.Stack):
-    def __init__(self, scope: cdk.Construct, id: str, ecr_repository_name: str, **kwargs) -> None:
+    def __init__(self, scope, id: str, ecr_repository_name: str, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
         self.repository = ecr.Repository(
