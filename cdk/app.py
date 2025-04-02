@@ -19,7 +19,7 @@ hosted_zone_id = os.environ.get("HOSTED_ZONE_ID", "")  # Optional: Route53 hoste
 app = cdk.App()
 StreamlitServiceStack(
     app,
-    "StreamlitServiceStack",
+    "streamlit-service-stack",
     env=cdk.Environment(
         account=app.node.try_get_context("account") or os.process.env.CDK_DEFAULT_ACCOUNT,
         region=app.node.try_get_context("region") or os.process.env.CDK_DEFAULT_REGION,
