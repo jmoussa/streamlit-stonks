@@ -712,7 +712,7 @@ class DiscordDistributor(ReportDistributor):
         # Discord uses Markdown formatting
         content = f"Generated on {report_data['timestamp']}\n\n"
         content += "## Market Summary\n"
-        content += "\nCheck out the dynamic [online-stock-tracker](https://stock-tracker.joseph-moussa.com) for additional charts and details! 📈 \n"
+        content += "\nCheck out the dynamic [online-stock-tracker](https://stonk-explorer.streamlit.app) for additional charts and details! 📈 \n"
 
         # weekly_emoji = "📈" if report_data["summary_stats"]["avg_weekly_change"] > 0 else "📉"
         # monthly_emoji = "📈" if report_data["summary_stats"]["avg_monthly_change"] > 0 else "📉"
@@ -720,7 +720,7 @@ class DiscordDistributor(ReportDistributor):
         # content += (
         #     f"{monthly_emoji} Average Monthly Change: {report_data['summary_stats']['avg_monthly_change']:.2f}%\n"
         # )
-        link_url_template = "https://stock-tracker.joseph-moussa.com?ticker={}"
+        link_url_template = "https://stonk-explorer.streamlit.app?ticker={}"
         for key, df in report_data["recommendations"].items():
             df = pd.DataFrame(df)
             if "Ticker" in df.columns:
